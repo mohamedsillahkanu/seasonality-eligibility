@@ -839,14 +839,13 @@
                 throw new Error(`Insufficient data: Analysis requires at least 6 years of data, but only ${dataSpanYears} years found in the dataset.`);
             }
 
-            // Calculate total number of blocks needed to cover all available data
-            const minYear = Math.min(...availableYears);
-            const maxYear = Math.max(...availableYears);
-            const totalYears = maxYear - minYear + 1;
-            const numBlocks = totalYears * 12; // 12 blocks per year to ensure complete coverage
+            // Calculate number of complete blocks: dataSpanYears - 1
+            // (because we need an extra year to complete the last block's Dec-Mar period)
+            const numCompleteBlocks = dataSpanYears - 1;
+            const totalNumBlocks = numCompleteBlocks * 12; // 12 time periods per block
 
             // Generate blocks for detailed analysis using all available data
-            const blocks = generateTimeBlocks(startYear, config.startMonth, numBlocks);
+            const blocks = generateTimeBlocks(startYear, config.startMonth, totalNumBlocks);
             
             // Calculate seasonality for each block and location (detailed results)
             const detailedResults = [];
@@ -967,7 +966,6 @@
                     const lastBlockEnd = `Mar ${year + 1}`;
                     
                     chunkSummary.push({
-                        Year: year,
                         LocationKey: locationKey,
                         DateRange: `(${firstBlockStart}-${firstBlockEnd}, ${lastBlockStart}-${lastBlockEnd})`,
                         TotalBlocks: 12,
@@ -976,10 +974,7 @@
                 });
             });
             
-            return chunkSummary.sort((a, b) => {
-                if (a.Year !== b.Year) return a.Year - b.Year;
-                return a.LocationKey.localeCompare(b.LocationKey);
-            });
+            return chunkSummary.sort((a, b) => a.LocationKey.localeCompare(b.LocationKey));
         }
 
         function generateYearBlocks(year) {
