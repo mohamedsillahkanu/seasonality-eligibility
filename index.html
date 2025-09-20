@@ -1162,6 +1162,25 @@
             const uniqueLocations = [...new Set(blockSummary.map(entry => entry.LocationKey))].length;
             const uniqueYears = [...new Set(blockSummary.map(entry => entry.Year))].length;
 
+            // Calculate seasonality rate based on locations, not location-year combinations
+            const locationGroups = {};
+            blockSummary.forEach(entry => {
+                if (!locationGroups[entry.LocationKey]) {
+                    locationGroups[entry.LocationKey] = [];
+                }
+                locationGroups[entry.LocationKey].push(entry);
+            });
+
+            // Count locations that are seasonal (ALL blocks seasonal) vs total locations
+            const seasonalLocations = Object.keys(locationGroups).filter(locationKey => {
+                const locationData = locationGroups[locationKey];
+                const seasonalBlocks = locationData.filter(entry => entry.ChunkSeasonal === 1).length;
+                // Location is seasonal if ALL its blocks are seasonal
+                return seasonalBlocks === locationData.length;
+            }).length;
+
+            const seasonalityRate = uniqueLocations > 0 ? Math.round((seasonalLocations / uniqueLocations) * 100) : 0;
+
             const summaryHTML = `
                 <div class="stats-container">
                     <div class="stats-card">
@@ -1173,11 +1192,11 @@
                         <p>Total Years</p>
                     </div>
                     <div class="stats-card">
-                        <h3>${seasonalEntries}</h3>
-                        <p>Seasonal Entries</p>
+                        <h3>${seasonalLocations}</h3>
+                        <p>Seasonal Locations</p>
                     </div>
                     <div class="stats-card">
-                        <h3>${totalEntries > 0 ? Math.round((seasonalEntries / totalEntries) * 100) : 0}%</h3>
+                        <h3>${seasonalityRate}%</h3>
                         <p>Seasonality Rate</p>
                     </div>
                 </div>
