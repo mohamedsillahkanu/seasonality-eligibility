@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seasonality Analysis Tool - Blue Dark Theme</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: #e1effe;
+            background: linear-gradient(135deg, #0a0e1a 0%, #0f1629 25%, #1a237e 75%, #1565c0 100%);
+            min-height: 100vh;
+        }
+
+        .main-header {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 25%, #1e3a8a 75%, #2563eb 100%);
+            color: white;
+            margin-bottom: 2rem;
+            border-radius: 0 0 1rem 1rem;
+            box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .main-header h1 {
+            margin-bottom: 0.5rem;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+        }
+
+        .main-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .upload-section {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+            backdrop-filter: blur(15px);
+            padding: 2rem;
+            border-radius: 15px;
+            border: 2px dashed #2563eb;
+            text-align: center;
+            margin: 2rem 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 12px 40px rgba(37, 99, 235, 0.2);
+        }
+
+        .upload-section h3 {
+            color: #93c5fd;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+        }
+
+        .upload-section p {
+            color: #9ca3af;
+        }
+
+        .file-input {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            border: none;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(29, 78, 216, 0.3);
+            font-weight: 600;
+        }
+
+        .file-input:hover {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(29, 78, 216, 0.4);
+        }
+
+        .file-input input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+            backdrop-filter: blur(15px);
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            border-top: 3px solid #2563eb;
+            border: 1px solid rgba(37, 99, 235, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(37, 99, 235, 0.3);
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+
+        .stats-card h3 {
+            font-size: 2rem;
+            color: #93c5fd;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .stats-card p {
+            color: #6b7280;
+        }
+
+        .config-section {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+            backdrop-filter: blur(15px);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            margin: 2rem 0;
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
+
+        .config-section h3 {
+            color: #93c5fd;
+            margin-bottom: 1.5rem;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .config-group {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(51, 65, 85, 0.8) 100%);
+            backdrop-filter: blur(15px);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
+
+        .config-group h4 {
+            color: #93c5fd;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            color: #93c5fd;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid rgba(30, 64, 175, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            background: rgba(15, 23, 42, 0.9);
+            color: #e1effe;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(29, 78, 216, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(29, 78, 216, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(75, 85, 99, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
+            transform: translateY(-2px);
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            backdrop-filter: blur(15px);
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, rgba(5, 150, 105, 0.2) 0%, rgba(4, 120, 87, 0.2) 100%);
+            border-left: 4px solid #059669;
+            color: #6ee7b7;
+        }
+
+        .alert-warning {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(8, 145, 178, 0.2) 100%);
+            border-left: 4px solid #06b6d4;
+            color: #67e8f9;
+        }
+
+        .alert-error {
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.2) 0%, rgba(185, 28, 28, 0.2) 100%);
+            border-left: 4px solid #dc2626;
+            color: #fca5a5;
+        }
+
+        .results-section {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+            backdrop-filter: blur(15px);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            margin: 2rem 0;
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
+
+        .results-section h3, .results-section h4 {
+            color: #93c5fd;
+            margin-bottom: 1rem;
+        }
+
+        .data-preview {
+            max-height: 500px;
+            overflow: auto;
+            margin: 1rem 0;
+            border: 1px solid rgba(30, 64, 175, 0.3);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(15px);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(30, 64, 175, 0.2);
+            white-space: nowrap;
+            min-width: 100px;
+            color: #e1effe;
+        }
+
+        .data-table th {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(51, 65, 85, 0.95) 100%);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            font-weight: 600;
+            z-index: 10;
+            color: #93c5fd;
+        }
+
+        .data-table tr:hover {
+            background-color: rgba(37, 99, 235, 0.1);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .progress-container {
+            margin-top: 1.5rem;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(30, 64, 175, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 14px;
+            color: #93c5fd;
+            font-weight: 500;
+        }
+
+        footer {
+            text-align: center;
+            color: #6b7280;
+            padding: 2rem;
+            margin-top: 3rem;
+            border-top: 1px solid rgba(37, 99, 235, 0.2);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%);
+            backdrop-filter: blur(10px);
+        }
+
+        @media (max-width: 768px) {
+            .config-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .main-header h1 {
+                font-size: 2rem;
+            }
+
+            .container {
+                padding: 0 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-header">
+        <h1>Seasonality Analysis Tool</h1>
+        <p>Automated analysis for malaria seasonality and SMC targeting</p>
+    </div>
+
+    <div class="container">
+        <!-- Upload Section -->
+        <div id="uploadSection" class="upload-section">
+            <h3>Upload Your Data File</h3>
+            <p>Upload a CSV or Excel file containing date/time variables and measurement data</p>
+            <label class="file-input">
+                Choose File
+                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+            </label>
+            
+            <!-- Progress Bar -->
+            <div id="progressContainer" class="progress-container hidden">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <div id="progressText" class="progress-text">Uploading...</div>
+            </div>
+        </div>
+
+        <!-- File Info -->
+        <div id="fileInfo" class="hidden">
+            <div class="stats-container">
+                <div class="stats-card">
+                    <h3 id="rowCount">0</h3>
+                    <p>Rows</p>
+                </div>
+                <div class="stats-card">
+                    <h3 id="colCount">0</h3>
+                    <p>Columns</p>
+                </div>
+                <div class="stats-card">
+                    <h3 id="dateRangeStart">-</h3>
+                    <p>Start Date</p>
+                </div>
+                <div class="stats-card">
+                    <h3 id="dateRangeEnd">-</h3>
+                    <p>End Date</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div id="alertContainer"></div>
+
+        <!-- Configuration Section -->
+        <div id="configSection" class="config-section hidden">
+            <h3>Analysis Configuration</h3>
+            
+            <div class="config-grid">
+                <div class="config-group">
+                    <h4>Data Variables</h4>
+                    <div class="form-group">
+                        <label for="yearColumn">Year Column:</label>
+                        <select id="yearColumn">
+                            <option value="">Select year column...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="monthColumn">Month Column:</label>
+                        <select id="monthColumn">
+                            <option value="">Select month column...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="valueColumn">Value Column (e.g., rainfall, cases):</label>
+                        <select id="valueColumn">
+                            <option value="">Select value column...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="config-group">
+                    <h4>Grouping Variables</h4>
+                    <div class="form-group">
+                        <label for="groupingColumn1">Primary Group (e.g., District):</label>
+                        <select id="groupingColumn1">
+                            <option value="">Select primary grouping...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="groupingColumn2">Secondary Group (optional):</label>
+                        <select id="groupingColumn2">
+                            <option value="">Select secondary grouping...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="config-group">
+                    <h4>Analysis Parameters</h4>
+                    <div class="form-group">
+                        <label for="startMonth">Analysis Start Month:</label>
+                        <select id="startMonth">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="startYear">Analysis Start Year:</label>
+                        <select id="startYear">
+                            <option value="">Auto-detect from data...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="thresholdPercent">Seasonality Threshold (%):</label>
+                        <input type="number" id="thresholdPercent" value="60" min="1" max="100">
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 2rem;">
+                <button class="btn btn-primary" onclick="runSeasonalityAnalysis()">Run Analysis</button>
+                <button class="btn btn-secondary" onclick="resetFile()" style="margin-left: 1rem;">Upload New File</button>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="results-section hidden">
+            <h3>Seasonality Analysis Results</h3>
+            
+            <h4>Summary Statistics</h4>
+            <div id="summaryStats"></div>
+            
+            <h4>Detailed Results</h4>
+            <div class="data-preview">
+                <table class="data-table" id="resultsTable"></table>
+            </div>
+            
+            <h4>Block Analysis Summary</h4>
+            <div class="data-preview">
+                <table class="data-table" id="annualSummaryTable"></table>
+            </div>
+            
+            <div style="text-align: center; margin-top: 2rem;">
+                <button class="btn btn-primary" onclick="downloadResults()">Download Results</button>
+                <button class="btn btn-secondary" onclick="backToConfig()">Modify Configuration</button>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div id="featuresSection">
+            <h3>How the Seasonality Analysis Works</h3>
+            <div class="config-grid">
+                <div class="config-group">
+                    <h4>Data Requirements:</h4>
+                    <ul style="color: #cbd5e1; line-height: 1.6;">
+                        <li>Year and Month columns</li>
+                        <li>Value column (rainfall, cases, etc.)</li>
+                        <li>Grouping variables (district, chiefdom, etc.)</li>
+                        <li>At least 12 months of data</li>
+                    </ul>
+                </div>
+                
+                <div class="config-group">
+                    <h4>Analysis Method:</h4>
+                    <ul style="color: #cbd5e1; line-height: 1.6;">
+                        <li>Creates overlapping 4-month and 12-month blocks</li>
+                        <li>Calculates seasonality percentage for each block</li>
+                        <li>Identifies peaks using threshold criteria</li>
+                        <li>Classifies locations as seasonal or non-seasonal</li>
+                    </ul>
+                </div>
+                
+                <div class="config-group">
+                    <h4>Outputs:</h4>
+                    <ul style="color: #cbd5e1; line-height: 1.6;">
+                        <li>Seasonality classification by location</li>
+                        <li>Timing of seasonal peaks</li>
+                        <li>Percentage values for each time block</li>
+                        <li>Summary statistics and visualizations</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Seasonality Analysis Tool v1.0 | Built for Malaria Research & SMC Targeting</p>
+    </footer>
+
+    <script>
+        let currentData = null;
+        let originalColumns = [];
+        let analysisResults = null;
+
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+
+        function showProgress(text, percentage) {
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            progressContainer.classList.remove('hidden');
+            progressFill.style.width = percentage + '%';
+            progressText.textContent = text;
+        }
+
+        function hideProgress() {
+            const progressContainer = document.getElementById('progressContainer');
+            progressContainer.classList.add('hidden');
+            
+            setTimeout(() => {
+                const progressFill = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+                progressFill.style.width = '0%';
+                progressText.textContent = 'Uploading...';
+            }, 300);
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const fileName = file.name;
+            const fileExtension = fileName.split('.').pop().toLowerCase();
+
+            showProgress('Uploading file...', 10);
+
+            if (fileExtension === 'csv') {
+                showProgress('Reading CSV file...', 30);
+                
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    dynamicTyping: false,
+                    complete: function(results) {
+                        showProgress('Processing data...', 80);
+                        setTimeout(() => {
+                            processData(results.data, fileName);
+                            hideProgress();
+                        }, 500);
+                    },
+                    error: function(error) {
+                        hideProgress();
+                        showAlert('Error reading CSV file: ' + error.message, 'error');
+                    }
+                });
+            } else if (['xlsx', 'xls'].includes(fileExtension)) {
+                showProgress('Reading Excel file...', 30);
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        showProgress('Processing Excel data...', 80);
+                        
+                        setTimeout(() => {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, {type: 'array'});
+                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                            const jsonData = XLSX.utils.sheet_to_json(firstSheet, {
+                                header: 1,
+                                defval: ''
+                            });
+                            
+                            const headers = jsonData[0] || [];
+                            const processedData = jsonData.slice(1).map(row => {
+                                const obj = {};
+                                headers.forEach((header, index) => {
+                                    obj[header] = row[index] || '';
+                                });
+                                return obj;
+                            });
+                            
+                            processData(processedData, fileName);
+                            hideProgress();
+                        }, 200);
+                    } catch (error) {
+                        hideProgress();
+                        showAlert('Error reading Excel file: ' + error.message, 'error');
+                    }
+                };
+                
+                reader.readAsArrayBuffer(file);
+            } else {
+                hideProgress();
+                showAlert('Unsupported file type. Please upload CSV or Excel files.', 'error');
+                return;
+            }
+        }
+
+        function processData(data, fileName) {
+            if (!data || data.length === 0) {
+                showAlert('The file appears to be empty or invalid.', 'error');
+                return;
+            }
+
+            const firstRow = data[0];
+            if (!firstRow || typeof firstRow !== 'object') {
+                showAlert('Invalid data format detected.', 'error');
+                return;
+            }
+
+            originalColumns = Object.keys(firstRow);
+            
+            currentData = data.filter(row => {
+                return originalColumns.some(col => {
+                    const value = row[col];
+                    return value !== null && value !== undefined && value !== '';
+                });
+            });
+
+            if (currentData.length === 0) {
+                showAlert('No valid data rows found in the file.', 'error');
+                return;
+            }
+
+            showAlert('File uploaded successfully! Found ' + originalColumns.length + ' columns and ' + currentData.length + ' data rows.', 'success');
+            
+            updateFileStats(currentData);
+            populateColumnSelectors();
+            detectDateRange();
+            
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('featuresSection').style.display = 'none';
+            document.getElementById('fileInfo').classList.remove('hidden');
+            document.getElementById('configSection').classList.remove('hidden');
+        }
+
+        function updateFileStats(data) {
+            const rowCount = data.length;
+            const colCount = originalColumns.length;
+
+            document.getElementById('rowCount').textContent = rowCount.toLocaleString();
+            document.getElementById('colCount').textContent = colCount;
+        }
+
+        function populateColumnSelectors() {
+            const selectors = ['yearColumn', 'monthColumn', 'valueColumn', 'groupingColumn1', 'groupingColumn2'];
+            
+            selectors.forEach(selectorId => {
+                const selector = document.getElementById(selectorId);
+                selector.innerHTML = selectorId === 'groupingColumn2' ? '<option value="">Select secondary grouping...</option>' : '<option value="">Select...</option>';
+                
+                originalColumns.forEach(column => {
+                    const option = document.createElement('option');
+                    option.value = column;
+                    option.textContent = column;
+                    selector.appendChild(option);
+                });
+            });
+        }
+
+        function detectDateRange() {
+            if (!currentData || currentData.length === 0) return;
+            
+            // Try to find year and month columns automatically
+            const yearCol = originalColumns.find(col => 
+                col.toLowerCase().includes('year') || 
+                col.toLowerCase().includes('yr')
+            );
+            
+            const monthCol = originalColumns.find(col => 
+                col.toLowerCase().includes('month') || 
+                col.toLowerCase().includes('mon')
+            );
+
+            if (yearCol) {
+                document.getElementById('yearColumn').value = yearCol;
+                
+                // Get unique years for start year selector
+                const years = [...new Set(currentData.map(row => parseInt(row[yearCol])).filter(y => !isNaN(y)))].sort();
+                const startYearSelect = document.getElementById('startYear');
+                startYearSelect.innerHTML = '<option value="">Auto-detect from data...</option>';
+                years.forEach(year => {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    startYearSelect.appendChild(option);
+                });
+
+                if (years.length > 0) {
+                    document.getElementById('dateRangeStart').textContent = years[0];
+                    document.getElementById('dateRangeEnd').textContent = years[years.length - 1];
+                }
+            }
+
+            if (monthCol) {
+                document.getElementById('monthColumn').value = monthCol;
+            }
+        }
+
+        function runSeasonalityAnalysis() {
+            const config = {
+                yearColumn: document.getElementById('yearColumn').value,
+                monthColumn: document.getElementById('monthColumn').value,
+                valueColumn: document.getElementById('valueColumn').value,
+                groupingColumn1: document.getElementById('groupingColumn1').value,
+                groupingColumn2: document.getElementById('groupingColumn2').value,
+                startMonth: parseInt(document.getElementById('startMonth').value),
+                startYear: document.getElementById('startYear').value,
+                thresholdPercent: parseFloat(document.getElementById('thresholdPercent').value)
+            };
+
+            // Validate configuration
+            if (!config.yearColumn || !config.monthColumn || !config.valueColumn || !config.groupingColumn1) {
+                showAlert('Please select year, month, value, and at least one grouping column.', 'error');
+                return;
+            }
+
+            showProgress('Running seasonality analysis...', 20);
+
+            try {
+                analysisResults = performSeasonalityAnalysis(currentData, config);
+                showProgress('Generating visualizations...', 80);
+                
+                setTimeout(() => {
+                    displayResults(analysisResults, config);
+                    hideProgress();
+                    showAlert('Seasonality analysis completed successfully!', 'success');
+                }, 500);
+                
+            } catch (error) {
+                hideProgress();
+                showAlert('Error during analysis: ' + error.message, 'error');
+                console.error('Analysis error:', error);
+            }
+        }
+
+        function performSeasonalityAnalysis(data, config) {
+            // Determine start year
+            let startYear = config.startYear;
+            if (!startYear) {
+                const years = data.map(row => parseInt(row[config.yearColumn])).filter(y => !isNaN(y));
+                startYear = Math.min(...years);
+            } else {
+                startYear = parseInt(startYear);
+            }
+
+            // Create date-based filtering
+            const filteredData = data.filter(row => {
+                const year = parseInt(row[config.yearColumn]);
+                const month = parseInt(row[config.monthColumn]);
+                return !isNaN(year) && !isNaN(month) && year >= startYear;
+            });
+
+            // Get all available years from the data
+            const availableYears = [...new Set(filteredData.map(row => parseInt(row[config.yearColumn])))].filter(y => !isNaN(y)).sort();
+            const dataSpanYears = availableYears.length;
+            
+            // Check if we have at least 6 years of data
+            if (dataSpanYears < 6) {
+                throw new Error(`Insufficient data: Analysis requires at least 6 years of data, but only ${dataSpanYears} years found in the dataset.`);
+            }
+
+            // Calculate total number of blocks needed to cover all available data
+            const minYear = Math.min(...availableYears);
+            const maxYear = Math.max(...availableYears);
+            const totalYears = maxYear - minYear + 1;
+            const numBlocks = totalYears * 12; // 12 blocks per year to ensure complete coverage
+
+            // Generate blocks for detailed analysis using all available data
+            const blocks = generateTimeBlocks(startYear, config.startMonth, numBlocks);
+            
+            // Calculate seasonality for each block and location (detailed results)
+            const detailedResults = [];
+            const locationGroups = groupDataByLocation(filteredData, config);
+
+            Object.keys(locationGroups).forEach(locationKey => {
+                const locationData = locationGroups[locationKey];
+                
+                blocks.forEach((block, blockIndex) => {
+                    const result = calculateBlockSeasonality(locationData, block, config, blockIndex + 1);
+                    result.LocationKey = locationKey;
+                    detailedResults.push(result);
+                });
+            });
+
+            // Calculate block analysis summary
+            const blockSummary = calculateBlockSummary(detailedResults, blocks);
+            
+            // Calculate location seasonality summary
+            const locationSummary = calculateLocationSummary(blockSummary);
+
+            return {
+                detailed: detailedResults,
+                blockSummary: blockSummary,
+                locationSummary: locationSummary
+            };
+        }
+
+        function calculateLocationSummary(blockSummary) {
+            const locationSummary = [];
+            
+            // Group by location
+            const locationGroups = {};
+            blockSummary.forEach(row => {
+                if (!locationGroups[row.LocationKey]) {
+                    locationGroups[row.LocationKey] = [];
+                }
+                locationGroups[row.LocationKey].push(row);
+            });
+            
+            // Calculate summary for each location
+            Object.keys(locationGroups).forEach(locationKey => {
+                const locationData = locationGroups[locationKey];
+                const totalBlocks = locationData.length;
+                const seasonalBlocks = locationData.filter(row => row.ChunkSeasonal === 1).length;
+                
+                // Classification: "Seasonal" if ALL blocks are seasonal, "Not Seasonal" otherwise
+                const seasonality = seasonalBlocks === totalBlocks ? "Seasonal" : "Not Seasonal";
+                
+                locationSummary.push({
+                    LocationKey: locationKey,
+                    SeasonalBlocks: seasonalBlocks,
+                    TotalBlocks: totalBlocks,
+                    Seasonality: seasonality
+                });
+            });
+            
+            return locationSummary.sort((a, b) => a.LocationKey.localeCompare(b.LocationKey));
+        }
+
+        function calculateBlockSummary(detailedResults, blocks) {
+            const chunkSummary = [];
+            
+            // Get all unique years and locations from the blocks
+            const years = [...new Set(blocks.map(block => block.start4M.year))].sort();
+            const locations = [...new Set(detailedResults.map(result => result.LocationKey))].sort();
+            
+            years.forEach(year => {
+                locations.forEach(locationKey => {
+                    // For each year and location, create 12 consecutive 4-month blocks
+                    const yearBlocks = [];
+                    
+                    // Generate 12 blocks starting from each month
+                    for (let startMonth = 1; startMonth <= 12; startMonth++) {
+                        let endMonth = startMonth + 3;
+                        let endYear = year;
+                        
+                        if (endMonth > 12) {
+                            endMonth -= 12;
+                            endYear++;
+                        }
+                        
+                        yearBlocks.push({
+                            startMonth,
+                            endMonth,
+                            startYear: year,
+                            endYear
+                        });
+                    }
+                    
+                    // Check if any of these 12 blocks had seasonal locations for this specific location
+                    let chunkSeasonal = 0;
+                    
+                    yearBlocks.forEach(yearBlock => {
+                        // Find matching detailed results for this specific 4-month period and location
+                        const matchingResults = detailedResults.filter(result => {
+                            const block = blocks[result.Block - 1];
+                            if (!block) return false;
+                            
+                            return result.LocationKey === locationKey &&
+                                   block.start4M.month === yearBlock.startMonth && 
+                                   block.start4M.year === yearBlock.startYear &&
+                                   block.end4M.month === yearBlock.endMonth &&
+                                   block.end4M.year === yearBlock.endYear;
+                        });
+                        
+                        // Check if this location was seasonal in this block
+                        const seasonalCount = matchingResults.filter(result => result.Seasonal === 1).length;
+                        if (seasonalCount > 0) {
+                            chunkSeasonal = 1; // If seasonal count > 0, chunk is 1
+                        }
+                    });
+                    
+                    // For date range, show first block (Jan-Apr) and last block (Dec-Mar of next year)
+                    const firstBlockStart = `Jan ${year}`;
+                    const firstBlockEnd = `Apr ${year}`;
+                    const lastBlockStart = `Dec ${year}`;
+                    const lastBlockEnd = `Mar ${year + 1}`;
+                    
+                    chunkSummary.push({
+                        Year: year,
+                        LocationKey: locationKey,
+                        DateRange: `(${firstBlockStart}-${firstBlockEnd}, ${lastBlockStart}-${lastBlockEnd})`,
+                        TotalBlocks: 12,
+                        ChunkSeasonal: chunkSeasonal // 1 if any seasonal count > 0, else 0
+                    });
+                });
+            });
+            
+            return chunkSummary.sort((a, b) => {
+                if (a.Year !== b.Year) return a.Year - b.Year;
+                return a.LocationKey.localeCompare(b.LocationKey);
+            });
+        }
+
+        function generateYearBlocks(year) {
+            const blocks = [];
+            
+            // Generate 12 consecutive 4-month blocks starting from each month of the year
+            for (let startMonth = 1; startMonth <= 12; startMonth++) {
+                const start4M = { year: year, month: startMonth };
+                let end4MYear = year;
+                let end4MMonth = startMonth + 3;
+                
+                if (end4MMonth > 12) {
+                    end4MYear++;
+                    end4MMonth -= 12;
+                }
+                
+                const end4M = { year: end4MYear, month: end4MMonth };
+                
+                // 12-month period starts from the same month
+                let end12MYear = year;
+                let end12MMonth = startMonth + 11;
+                
+                if (end12MMonth > 12) {
+                    end12MYear++;
+                    end12MMonth -= 12;
+                }
+                
+                const end12M = { year: end12MYear, month: end12MMonth };
+
+                blocks.push({
+                    blockNumber: startMonth,
+                    start4M,
+                    end4M,
+                    start12M: start4M,
+                    end12M,
+                    dateRange: `${getMonthName(start4M.month)} ${start4M.year}-${getMonthName(end4M.month)} ${end4M.year}`
+                });
+            }
+            
+            return blocks;
+        }
+
+        function generateTimeBlocks(startYear, startMonth, numBlocks) {
+            const blocks = [];
+            let currentYear = startYear;
+            let currentMonth = startMonth;
+
+            for (let i = 0; i < numBlocks; i++) {
+                const start4M = { year: currentYear, month: currentMonth };
+                let end4MYear = currentYear;
+                let end4MMonth = currentMonth + 3;
+                
+                if (end4MMonth > 12) {
+                    end4MYear++;
+                    end4MMonth -= 12;
+                }
+                
+                const end4M = { year: end4MYear, month: end4MMonth };
+                
+                let end12MYear = currentYear;
+                let end12MMonth = currentMonth + 11;
+                
+                if (end12MMonth > 12) {
+                    end12MYear++;
+                    end12MMonth -= 12;
+                }
+                
+                const end12M = { year: end12MYear, month: end12MMonth };
+
+                blocks.push({
+                    blockNumber: i + 1,
+                    start4M,
+                    end4M,
+                    start12M: start4M,
+                    end12M,
+                    dateRange: `${getMonthName(start4M.month)} ${start4M.year}-${getMonthName(end4M.month)} ${end4M.year}`
+                });
+
+                // Move to next month
+                currentMonth++;
+                if (currentMonth > 12) {
+                    currentMonth = 1;
+                    currentYear++;
+                }
+            }
+
+            return blocks;
+        }
+
+        function getMonthName(monthNum) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return months[monthNum - 1];
+        }
+
+        function groupDataByLocation(data, config) {
+            const groups = {};
+            
+            data.forEach(row => {
+                let locationKey = row[config.groupingColumn1];
+                if (config.groupingColumn2) {
+                    locationKey += ' - ' + row[config.groupingColumn2];
+                }
+                
+                if (!groups[locationKey]) {
+                    groups[locationKey] = [];
+                }
+                groups[locationKey].push(row);
+            });
+            
+            return groups;
+        }
+
+        function calculateBlockSeasonality(locationData, block, config, blockNumber) {
+            // Calculate 4-month total
+            const data4M = locationData.filter(row => {
+                const year = parseInt(row[config.yearColumn]);
+                const month = parseInt(row[config.monthColumn]);
+                
+                return isDateInRange(year, month, block.start4M, block.end4M);
+            });
+            
+            const total4M = data4M.reduce((sum, row) => {
+                const value = parseFloat(row[config.valueColumn]);
+                return sum + (isNaN(value) ? 0 : value);
+            }, 0);
+
+            // Calculate 12-month total
+            const data12M = locationData.filter(row => {
+                const year = parseInt(row[config.yearColumn]);
+                const month = parseInt(row[config.monthColumn]);
+                
+                return isDateInRange(year, month, block.start12M, block.end12M);
+            });
+            
+            const total12M = data12M.reduce((sum, row) => {
+                const value = parseFloat(row[config.valueColumn]);
+                return sum + (isNaN(value) ? 0 : value);
+            }, 0);
+
+            const percentSeasonality = total12M > 0 ? (total4M / total12M) * 100 : 0;
+            const isSeasonal = percentSeasonality >= config.thresholdPercent;
+
+            return {
+                Block: blockNumber,
+                DateRange: block.dateRange,
+                Total_4M: total4M,
+                Total_12M: total12M,
+                Percent_Seasonality: Math.round(percentSeasonality * 100) / 100,
+                Seasonal: isSeasonal ? 1 : 0,
+                Start_4M: block.start4M,
+                End_4M: block.end4M,
+                Start_12M: block.start12M,
+                End_12M: block.end12M
+            };
+        }
+
+        function isDateInRange(year, month, startDate, endDate) {
+            if (startDate.year === endDate.year) {
+                return year === startDate.year && month >= startDate.month && month <= endDate.month;
+            } else {
+                return (year === startDate.year && month >= startDate.month) ||
+                       (year === endDate.year && month <= endDate.month) ||
+                       (year > startDate.year && year < endDate.year);
+            }
+        }
+
+        function displayResults(results, config) {
+            document.getElementById('configSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+
+            // Display summary statistics
+            displaySummaryStats(results.blockSummary);
+            
+            // Display detailed results table first
+            displayResultsTable(results.detailed);
+            
+            // Display block analysis summary table
+            displayBlockSummaryTable(results.blockSummary);
+            
+            // Display location seasonality summary table
+            displayLocationSummaryTable(results.locationSummary);
+        }
+
+        function displaySummaryStats(blockSummary) {
+            if (!blockSummary || blockSummary.length === 0) return;
+            
+            const totalEntries = blockSummary.length;
+            const seasonalEntries = blockSummary.filter(entry => entry.ChunkSeasonal === 1).length;
+            const uniqueLocations = [...new Set(blockSummary.map(entry => entry.LocationKey))].length;
+            const uniqueYears = [...new Set(blockSummary.map(entry => entry.Year))].length;
+
+            const summaryHTML = `
+                <div class="stats-container">
+                    <div class="stats-card">
+                        <h3>${uniqueLocations}</h3>
+                        <p>Total Locations</p>
+                    </div>
+                    <div class="stats-card">
+                        <h3>${uniqueYears}</h3>
+                        <p>Total Years</p>
+                    </div>
+                    <div class="stats-card">
+                        <h3>${seasonalEntries}</h3>
+                        <p>Seasonal Entries</p>
+                    </div>
+                    <div class="stats-card">
+                        <h3>${totalEntries > 0 ? Math.round((seasonalEntries / totalEntries) * 100) : 0}%</h3>
+                        <p>Seasonality Rate</p>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('summaryStats').innerHTML = summaryHTML;
+        }
+
+        function displayBlockSummaryTable(blockSummary) {
+            const table = document.getElementById('annualSummaryTable');
+            table.innerHTML = '';
+
+            if (!blockSummary || blockSummary.length === 0) {
+                return;
+            }
+
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            const columns = ['Location', 'Year', 'Date Range', 'Total Blocks', 'Block'];
+            columns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create body
+            const tbody = document.createElement('tbody');
+            
+            blockSummary.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                [
+                    row.LocationKey,
+                    row.Year,
+                    row.DateRange,
+                    row.TotalBlocks,
+                    row.ChunkSeasonal
+                ].forEach(value => {
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+            });
+            
+            table.appendChild(tbody);
+
+            table.insertAdjacentHTML('afterend', `
+                <p style="color: #6b7280; padding: 1rem; text-align: center;"><em>Block Analysis Summary: Shows seasonality for each location within each chunk of 12 consecutive 4-month blocks. "Block" = 1 if seasonal count > 0 for that location within that range, 0 otherwise.</em></p>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" onclick="downloadBlockSummary()">Download Block Summary</button>
+                </div>
+            `);
+        }
+
+        function displayLocationSummaryTable(locationSummary) {
+            // Create a new table container for location summary
+            const existingLocationTable = document.getElementById('locationSummaryTable');
+            if (existingLocationTable) {
+                existingLocationTable.remove();
+            }
+            
+            // Insert location summary section after block summary
+            const blockSummaryTable = document.getElementById('annualSummaryTable');
+            const locationSummaryHTML = `
+                <h4 style="color: #93c5fd; margin: 2rem 0 1rem 0;">Location Seasonality Summary</h4>
+                <div class="data-preview">
+                    <table class="data-table" id="locationSummaryTable"></table>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" onclick="downloadLocationSummary()">Download Location Summary</button>
+                </div>
+            `;
+            blockSummaryTable.parentNode.insertAdjacentHTML('afterend', locationSummaryHTML);
+            
+            const table = document.getElementById('locationSummaryTable');
+            table.innerHTML = '';
+
+            if (!locationSummary || locationSummary.length === 0) {
+                return;
+            }
+
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            const columns = ['Location', 'Seasonal Blocks', 'Total Blocks', 'Seasonality'];
+            columns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create body
+            const tbody = document.createElement('tbody');
+            
+            locationSummary.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                [
+                    row.LocationKey,
+                    row.SeasonalBlocks,
+                    row.TotalBlocks,
+                    row.Seasonality
+                ].forEach(value => {
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+            });
+            
+            table.appendChild(tbody);
+
+            table.insertAdjacentHTML('afterend', `<p style="color: #6b7280; padding: 1rem; text-align: center;"><em>Location Seasonality Summary: Shows overall seasonality per location. "Seasonality" = "Seasonal" if ALL year chunks have Block=1, "Not Seasonal" otherwise.</em></p>`);
+        }
+
+        function displayResultsTable(results) {
+            const table = document.getElementById('resultsTable');
+            table.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                return;
+            }
+
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            const columns = ['Location', 'Block', 'Date Range', '4M Total', '12M Total', 'Seasonality %', 'Seasonal'];
+            columns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create body
+            const tbody = document.createElement('tbody');
+            const displayData = results.slice(0, 200); // Show first 200 rows
+            
+            displayData.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                [
+                    row.LocationKey,
+                    row.Block,
+                    row.DateRange,
+                    row.Total_4M ? row.Total_4M.toFixed(1) : '0.0',
+                    row.Total_12M ? row.Total_12M.toFixed(1) : '0.0',
+                    row.Percent_Seasonality ? row.Percent_Seasonality.toFixed(1) + '%' : '0.0%',
+                    row.Seasonal === 1 ? 'Yes' : 'No'
+                ].forEach(value => {
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+            });
+            
+            table.appendChild(tbody);
+
+            const statusText = results.length > 200 ? 
+                `<p style="color: #6b7280; padding: 1rem; text-align: center;"><em>Showing first 200 rows of ${results.length} total results.</em></p>` : 
+                `<p style="color: #6b7280; padding: 1rem; text-align: center;"><em>Showing all ${results.length} results.</em></p>`;
+            
+            table.insertAdjacentHTML('afterend', `
+                ${statusText}
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" onclick="downloadDetailedResults()">Download Detailed Results</button>
+                </div>
+            `);
+        }
+
+        function downloadResults() {
+            if (!analysisResults) return;
+
+            // Combine all three result types with clear separation
+            const combinedData = [
+                // Add header comment rows
+                { Comment: "=== DETAILED RESULTS ===" },
+                ...analysisResults.detailed,
+                { Comment: "" },
+                { Comment: "=== BLOCK ANALYSIS SUMMARY ===" },
+                ...analysisResults.blockSummary,
+                { Comment: "" },
+                { Comment: "=== LOCATION SEASONALITY SUMMARY ===" },
+                ...analysisResults.locationSummary
+            ];
+
+            const csv = Papa.unparse(combinedData);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `seasonality_analysis_complete_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            showAlert('Complete results downloaded successfully!', 'success');
+        }
+
+        function downloadDetailedResults() {
+            if (!analysisResults || !analysisResults.detailed) return;
+
+            const csv = Papa.unparse(analysisResults.detailed);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `detailed_results_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            showAlert('Detailed results downloaded successfully!', 'success');
+        }
+
+        function downloadBlockSummary() {
+            if (!analysisResults || !analysisResults.blockSummary) return;
+
+            const csv = Papa.unparse(analysisResults.blockSummary);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `block_summary_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            showAlert('Block summary downloaded successfully!', 'success');
+        }
+
+        function downloadLocationSummary() {
+            if (!analysisResults || !analysisResults.locationSummary) return;
+
+            const csv = Papa.unparse(analysisResults.locationSummary);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `location_summary_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            showAlert('Location summary downloaded successfully!', 'success');
+        }
+
+        function backToConfig() {
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('configSection').classList.remove('hidden');
+        }
+
+        function resetFile() {
+            currentData = null;
+            originalColumns = [];
+            analysisResults = null;
+            
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('featuresSection').style.display = 'block';
+            document.getElementById('fileInfo').classList.add('hidden');
+            document.getElementById('configSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('fileInput').value = '';
+            document.getElementById('alertContainer').innerHTML = '';
+        }
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            alertContainer.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
