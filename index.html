@@ -854,15 +854,22 @@
             Object.keys(locationGroups).forEach(locationKey => {
                 const locationData = locationGroups[locationKey];
                 
+                // Split location key into separate parts
+                const locationParts = locationKey.includes(' - ') ? locationKey.split(' - ') : [locationKey, ''];
+                const primaryLocation = locationParts[0] || '';
+                const secondaryLocation = locationParts[1] || '';
+                
                 blocks.forEach((block, blockIndex) => {
                     const result = calculateBlockSeasonality(locationData, block, config, blockIndex + 1);
-                    result.LocationKey = locationKey;
+                    result.PrimaryLocation = primaryLocation;
+                    result.SecondaryLocation = secondaryLocation;
+                    result.LocationKey = locationKey; // Keep for backward compatibility
                     detailedResults.push(result);
                 });
             });
 
             // Calculate block analysis summary
-            const blockSummary = calculateBlockSummary(detailedResults, blocks);
+            const blockSummary = calculateBlockSummary(detailedResults, blocks, config);
             
             // Calculate location seasonality summary
             const locationSummary = calculateLocationSummary(blockSummary);
@@ -892,21 +899,31 @@
                 const totalBlocks = locationData.length;
                 const seasonalBlocks = locationData.filter(row => row.ChunkSeasonal === 1).length;
                 
+                // Split location key into separate parts
+                const locationParts = locationKey.includes(' - ') ? locationKey.split(' - ') : [locationKey, ''];
+                const primaryLocation = locationParts[0] || '';
+                const secondaryLocation = locationParts[1] || '';
+                
                 // Classification: "Seasonal" if ALL blocks are seasonal, "Not Seasonal" otherwise
                 const seasonality = seasonalBlocks === totalBlocks ? "Seasonal" : "Not Seasonal";
                 
                 locationSummary.push({
-                    LocationKey: locationKey,
+                    PrimaryLocation: primaryLocation,
+                    SecondaryLocation: secondaryLocation,
+                    LocationKey: locationKey, // Keep for backward compatibility
                     SeasonalBlocks: seasonalBlocks,
                     TotalBlocks: totalBlocks,
                     Seasonality: seasonality
                 });
             });
             
-            return locationSummary.sort((a, b) => a.LocationKey.localeCompare(b.LocationKey));
+            return locationSummary.sort((a, b) => {
+                if (a.PrimaryLocation !== b.PrimaryLocation) return a.PrimaryLocation.localeCompare(b.PrimaryLocation);
+                return a.SecondaryLocation.localeCompare(b.SecondaryLocation);
+            });
         }
 
-        function calculateBlockSummary(detailedResults, blocks) {
+        function calculateBlockSummary(detailedResults, blocks, config) {
             const chunkSummary = [];
             
             // Get all unique years and locations from the blocks
@@ -915,6 +932,11 @@
             
             years.forEach(year => {
                 locations.forEach(locationKey => {
+                    // Split location key into separate parts
+                    const locationParts = locationKey.includes(' - ') ? locationKey.split(' - ') : [locationKey, ''];
+                    const primaryLocation = locationParts[0] || '';
+                    const secondaryLocation = locationParts[1] || '';
+                    
                     // For each year and location, create 12 consecutive 4-month blocks
                     const yearBlocks = [];
                     
@@ -967,7 +989,9 @@
                     
                     chunkSummary.push({
                         Year: year,
-                        LocationKey: locationKey,
+                        PrimaryLocation: primaryLocation,
+                        SecondaryLocation: secondaryLocation,
+                        LocationKey: locationKey, // Keep for backward compatibility
                         DateRange: `(${firstBlockStart}-${firstBlockEnd}, ${lastBlockStart}-${lastBlockEnd})`,
                         TotalBlocks: 12,
                         ChunkSeasonal: chunkSeasonal // 1 if any seasonal count > 0, else 0
@@ -977,7 +1001,8 @@
             
             return chunkSummary.sort((a, b) => {
                 if (a.Year !== b.Year) return a.Year - b.Year;
-                return a.LocationKey.localeCompare(b.LocationKey);
+                if (a.PrimaryLocation !== b.PrimaryLocation) return a.PrimaryLocation.localeCompare(b.PrimaryLocation);
+                return a.SecondaryLocation.localeCompare(b.SecondaryLocation);
             });
         }
 
@@ -1203,11 +1228,19 @@
                 return;
             }
 
+            // Check if we have secondary location data
+            const hasSecondaryLocation = blockSummary.some(row => row.SecondaryLocation && row.SecondaryLocation.trim() !== '');
+
             // Create header
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
             
-            const columns = ['Location', 'Year', 'Date Range', 'Total Blocks', 'Block'];
+            let columns = ['Primary Location'];
+            if (hasSecondaryLocation) {
+                columns.push('Secondary Location');
+            }
+            columns = columns.concat(['Year', 'Date Range', 'Total Blocks', 'Block']);
+            
             columns.forEach(col => {
                 const th = document.createElement('th');
                 th.textContent = col;
@@ -1223,13 +1256,18 @@
             blockSummary.forEach(row => {
                 const tr = document.createElement('tr');
                 
-                [
-                    row.LocationKey,
+                let rowData = [row.PrimaryLocation || ''];
+                if (hasSecondaryLocation) {
+                    rowData.push(row.SecondaryLocation || '');
+                }
+                rowData = rowData.concat([
                     row.Year,
                     row.DateRange,
                     row.TotalBlocks,
                     row.ChunkSeasonal
-                ].forEach(value => {
+                ]);
+                
+                rowData.forEach(value => {
                     const td = document.createElement('td');
                     td.textContent = value;
                     tr.appendChild(td);
@@ -1272,11 +1310,19 @@
                 return;
             }
 
+            // Check if we have secondary location data
+            const hasSecondaryLocation = locationSummary.some(row => row.SecondaryLocation && row.SecondaryLocation.trim() !== '');
+
             // Create header
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
             
-            const columns = ['Location', 'Seasonal Blocks', 'Total Blocks', 'Seasonality'];
+            let columns = ['Primary Location'];
+            if (hasSecondaryLocation) {
+                columns.push('Secondary Location');
+            }
+            columns = columns.concat(['Seasonal Blocks', 'Total Blocks', 'Seasonality']);
+            
             columns.forEach(col => {
                 const th = document.createElement('th');
                 th.textContent = col;
@@ -1292,12 +1338,17 @@
             locationSummary.forEach(row => {
                 const tr = document.createElement('tr');
                 
-                [
-                    row.LocationKey,
+                let rowData = [row.PrimaryLocation || ''];
+                if (hasSecondaryLocation) {
+                    rowData.push(row.SecondaryLocation || '');
+                }
+                rowData = rowData.concat([
                     row.SeasonalBlocks,
                     row.TotalBlocks,
                     row.Seasonality
-                ].forEach(value => {
+                ]);
+                
+                rowData.forEach(value => {
                     const td = document.createElement('td');
                     td.textContent = value;
                     tr.appendChild(td);
@@ -1319,11 +1370,19 @@
                 return;
             }
 
+            // Check if we have secondary location data
+            const hasSecondaryLocation = results.some(row => row.SecondaryLocation && row.SecondaryLocation.trim() !== '');
+
             // Create header
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
             
-            const columns = ['Location', 'Block', 'Date Range', '4M Total', '12M Total', 'Seasonality %', 'Seasonal'];
+            let columns = ['Primary Location'];
+            if (hasSecondaryLocation) {
+                columns.push('Secondary Location');
+            }
+            columns = columns.concat(['Block', 'Date Range', '4M Total', '12M Total', 'Seasonality %', 'Seasonal']);
+            
             columns.forEach(col => {
                 const th = document.createElement('th');
                 th.textContent = col;
@@ -1340,15 +1399,20 @@
             displayData.forEach(row => {
                 const tr = document.createElement('tr');
                 
-                [
-                    row.LocationKey,
+                let rowData = [row.PrimaryLocation || ''];
+                if (hasSecondaryLocation) {
+                    rowData.push(row.SecondaryLocation || '');
+                }
+                rowData = rowData.concat([
                     row.Block,
                     row.DateRange,
                     row.Total_4M ? row.Total_4M.toFixed(1) : '0.0',
                     row.Total_12M ? row.Total_12M.toFixed(1) : '0.0',
                     row.Percent_Seasonality ? row.Percent_Seasonality.toFixed(1) + '%' : '0.0%',
                     row.Seasonal === 1 ? 'Yes' : 'No'
-                ].forEach(value => {
+                ]);
+                
+                rowData.forEach(value => {
                     const td = document.createElement('td');
                     td.textContent = value;
                     tr.appendChild(td);
