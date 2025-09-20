@@ -517,18 +517,24 @@
             <h4>Summary Statistics</h4>
             <div id="summaryStats"></div>
             
-            <h4>Detailed Results</h4>
-            <div class="data-preview">
-                <table class="data-table" id="resultsTable"></table>
+            <!-- Detailed Results Table -->
+            <div id="detailedResultsSection">
+                <div class="data-preview">
+                    <table class="data-table" id="resultsTable"></table>
+                </div>
             </div>
             
-            <h4>Block Analysis Summary</h4>
-            <div class="data-preview">
-                <table class="data-table" id="annualSummaryTable"></table>
+            <!-- Block Summary Table -->
+            <div id="blockSummarySection">
+                <div class="data-preview">
+                    <table class="data-table" id="annualSummaryTable"></table>
+                </div>
             </div>
+            
+            <!-- Location Summary Table (placeholder for dynamic content) -->
+            <div id="locationSummaryContainer"></div>
             
             <div style="text-align: center; margin-top: 2rem;">
-                <button class="btn btn-primary" onclick="downloadResults()">Download Results</button>
                 <button class="btn btn-secondary" onclick="backToConfig()">Modify Configuration</button>
             </div>
         </div>
@@ -1006,46 +1012,6 @@
             });
         }
 
-        function generateYearBlocks(year) {
-            const blocks = [];
-            
-            // Generate 12 consecutive 4-month blocks starting from each month of the year
-            for (let startMonth = 1; startMonth <= 12; startMonth++) {
-                const start4M = { year: year, month: startMonth };
-                let end4MYear = year;
-                let end4MMonth = startMonth + 3;
-                
-                if (end4MMonth > 12) {
-                    end4MYear++;
-                    end4MMonth -= 12;
-                }
-                
-                const end4M = { year: end4MYear, month: end4MMonth };
-                
-                // 12-month period starts from the same month
-                let end12MYear = year;
-                let end12MMonth = startMonth + 11;
-                
-                if (end12MMonth > 12) {
-                    end12MYear++;
-                    end12MMonth -= 12;
-                }
-                
-                const end12M = { year: end12MYear, month: end12MMonth };
-
-                blocks.push({
-                    blockNumber: startMonth,
-                    start4M,
-                    end4M,
-                    start12M: start4M,
-                    end12M,
-                    dateRange: `${getMonthName(start4M.month)} ${start4M.year}-${getMonthName(end4M.month)} ${end4M.year}`
-                });
-            }
-            
-            return blocks;
-        }
-
         function generateTimeBlocks(startYear, startMonth, numBlocks) {
             const blocks = [];
             let currentYear = startYear;
@@ -1220,155 +1186,30 @@
             document.getElementById('summaryStats').innerHTML = summaryHTML;
         }
 
-        function displayBlockSummaryTable(blockSummary) {
-            const table = document.getElementById('annualSummaryTable');
-            table.innerHTML = '';
-
-            if (!blockSummary || blockSummary.length === 0) {
-                return;
-            }
-
-            // Check if we have secondary location data
-            const hasSecondaryLocation = blockSummary.some(row => row.SecondaryLocation && row.SecondaryLocation.trim() !== '');
-
-            // Create header
-            const thead = document.createElement('thead');
-            const headerRow = document.createElement('tr');
-            
-            let columns = ['Primary Location'];
-            if (hasSecondaryLocation) {
-                columns.push('Secondary Location');
-            }
-            columns = columns.concat(['Year', 'Date Range', 'Total Blocks', 'Block']);
-            
-            columns.forEach(col => {
-                const th = document.createElement('th');
-                th.textContent = col;
-                headerRow.appendChild(th);
-            });
-            
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
-
-            // Create body
-            const tbody = document.createElement('tbody');
-            
-            blockSummary.forEach(row => {
-                const tr = document.createElement('tr');
-                
-                let rowData = [row.PrimaryLocation || ''];
-                if (hasSecondaryLocation) {
-                    rowData.push(row.SecondaryLocation || '');
-                }
-                rowData = rowData.concat([
-                    row.Year,
-                    row.DateRange,
-                    row.TotalBlocks,
-                    row.ChunkSeasonal
-                ]);
-                
-                rowData.forEach(value => {
-                    const td = document.createElement('td');
-                    td.textContent = value;
-                    tr.appendChild(td);
-                });
-                
-                tbody.appendChild(tr);
-            });
-            
-            table.appendChild(tbody);
-
-            table.insertAdjacentHTML('afterend', `
-                <p style="color: #6b7280; padding: 1rem; text-align: center;"><em>Block Analysis Summary: Shows seasonality for each location within each chunk of 12 consecutive 4-month blocks. "Block" = 1 if seasonal count > 0 for that location within that range, 0 otherwise.</em></p>
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" onclick="downloadBlockSummary()">Download Block Summary</button>
-                </div>
-            `);
-        }
-
-        function displayLocationSummaryTable(locationSummary) {
-            // Create a new table container for location summary
-            const existingLocationTable = document.getElementById('locationSummaryTable');
-            if (existingLocationTable) {
-                existingLocationTable.remove();
-            }
-            
-            // Insert location summary section after block summary
-            const blockSummaryTable = document.getElementById('annualSummaryTable');
-            const locationSummaryHTML = `
-                <h4 style="color: #93c5fd; margin: 2rem 0 1rem 0;">Location Seasonality Summary</h4>
-                <div class="data-preview">
-                    <table class="data-table" id="locationSummaryTable"></table>
-                </div>
-            `;
-            blockSummaryTable.parentNode.insertAdjacentHTML('afterend', locationSummaryHTML);
-            
-            const table = document.getElementById('locationSummaryTable');
-            table.innerHTML = '';
-
-            if (!locationSummary || locationSummary.length === 0) {
-                return;
-            }
-
-            // Check if we have secondary location data
-            const hasSecondaryLocation = locationSummary.some(row => row.SecondaryLocation && row.SecondaryLocation.trim() !== '');
-
-            // Create header
-            const thead = document.createElement('thead');
-            const headerRow = document.createElement('tr');
-            
-            let columns = ['Primary Location'];
-            if (hasSecondaryLocation) {
-                columns.push('Secondary Location');
-            }
-            columns = columns.concat(['Seasonal Blocks', 'Total Blocks', 'Seasonality']);
-            
-            columns.forEach(col => {
-                const th = document.createElement('th');
-                th.textContent = col;
-                headerRow.appendChild(th);
-            });
-            
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
-
-            // Create body
-            const tbody = document.createElement('tbody');
-            
-            locationSummary.forEach(row => {
-                const tr = document.createElement('tr');
-                
-                let rowData = [row.PrimaryLocation || ''];
-                if (hasSecondaryLocation) {
-                    rowData.push(row.SecondaryLocation || '');
-                }
-                rowData = rowData.concat([
-                    row.SeasonalBlocks,
-                    row.TotalBlocks,
-                    row.Seasonality
-                ]);
-                
-                rowData.forEach(value => {
-                    const td = document.createElement('td');
-                    td.textContent = value;
-                    tr.appendChild(td);
-                });
-                
-                tbody.appendChild(tr);
-            });
-            
-            table.appendChild(tbody);
-
-            table.insertAdjacentHTML('afterend', `<p style="color: #6b7280; padding: 1rem; text-align: center;"><em>Location Seasonality Summary: Shows overall seasonality per location. "Seasonality" = "Seasonal" if ALL year chunks have Block=1, "Not Seasonal" otherwise.</em></p>`);
-        }
-
         function displayResultsTable(results) {
             const table = document.getElementById('resultsTable');
             table.innerHTML = '';
 
+            // Remove any existing download section for detailed results
+            const existingDetailedDownload = document.getElementById('detailedResultsDownload');
+            if (existingDetailedDownload) {
+                existingDetailedDownload.remove();
+            }
+
             if (!results || results.length === 0) {
                 return;
             }
+
+            // Add header with download button
+            const tableHeader = document.createElement('div');
+            tableHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;';
+            tableHeader.innerHTML = `
+                <h4 style="color: #93c5fd; margin: 0;">Detailed Results</h4>
+                <button class="btn btn-primary" onclick="downloadDetailedResults()" style="padding: 8px 16px;">
+                    Download CSV
+                </button>
+            `;
+            table.parentNode.insertBefore(tableHeader, table);
 
             // Check if we have secondary location data
             const hasSecondaryLocation = results.some(row => row.SecondaryLocation && row.SecondaryLocation.trim() !== '');
@@ -1424,44 +1265,183 @@
             table.appendChild(tbody);
 
             const statusText = results.length > 200 ? 
-                `<p style="color: #6b7280; padding: 1rem; text-align: center;"><em>Showing first 200 rows of ${results.length} total results.</em></p>` : 
+                `<p style="color: #6b7280; padding: 1rem; text-align: center;"><em>Showing first 200 rows of ${results.length} total results. Download CSV for complete data.</em></p>` : 
                 `<p style="color: #6b7280; padding: 1rem; text-align: center;"><em>Showing all ${results.length} results.</em></p>`;
             
-            table.insertAdjacentHTML('afterend', `
-                ${statusText}
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" onclick="downloadDetailedResults()">Download Detailed Results</button>
-                </div>
-            `);
+            // Add status section after the table
+            const statusSection = document.createElement('div');
+            statusSection.id = 'detailedResultsStatus';
+            statusSection.innerHTML = statusText;
+            table.parentNode.insertBefore(statusSection, table.nextSibling);
         }
 
-        function downloadResults() {
-            if (!analysisResults) return;
+        function displayBlockSummaryTable(blockSummary) {
+            const table = document.getElementById('annualSummaryTable');
+            table.innerHTML = '';
 
-            // Combine all three result types with clear separation
-            const combinedData = [
-                // Add header comment rows
-                { Comment: "=== DETAILED RESULTS ===" },
-                ...analysisResults.detailed,
-                { Comment: "" },
-                { Comment: "=== BLOCK ANALYSIS SUMMARY ===" },
-                ...analysisResults.blockSummary,
-                { Comment: "" },
-                { Comment: "=== LOCATION SEASONALITY SUMMARY ===" },
-                ...analysisResults.locationSummary
-            ];
+            // Remove any existing download section for block summary
+            const existingBlockDownload = document.getElementById('blockSummaryDownload');
+            if (existingBlockDownload) {
+                existingBlockDownload.remove();
+            }
 
-            const csv = Papa.unparse(combinedData);
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
+            if (!blockSummary || blockSummary.length === 0) {
+                return;
+            }
+
+            // Add header with download button
+            const tableHeader = document.createElement('div');
+            tableHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;';
+            tableHeader.innerHTML = `
+                <h4 style="color: #93c5fd; margin: 0;">Block Analysis Summary</h4>
+                <button class="btn btn-primary" onclick="downloadBlockSummary()" style="padding: 8px 16px;">
+                    Download CSV
+                </button>
+            `;
+            table.parentNode.insertBefore(tableHeader, table);
+
+            // Check if we have secondary location data
+            const hasSecondaryLocation = blockSummary.some(row => row.SecondaryLocation && row.SecondaryLocation.trim() !== '');
+
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
             
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `seasonality_analysis_complete_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
-            a.click();
+            let columns = ['Primary Location'];
+            if (hasSecondaryLocation) {
+                columns.push('Secondary Location');
+            }
+            columns = columns.concat(['Year', 'Date Range', 'Total Blocks', 'Block']);
             
-            URL.revokeObjectURL(url);
-            showAlert('Complete results downloaded successfully!', 'success');
+            columns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create body
+            const tbody = document.createElement('tbody');
+            
+            blockSummary.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                let rowData = [row.PrimaryLocation || ''];
+                if (hasSecondaryLocation) {
+                    rowData.push(row.SecondaryLocation || '');
+                }
+                rowData = rowData.concat([
+                    row.Year,
+                    row.DateRange,
+                    row.TotalBlocks,
+                    row.ChunkSeasonal
+                ]);
+                
+                rowData.forEach(value => {
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+            });
+            
+            table.appendChild(tbody);
+
+            // Add explanation after the table
+            const explanationSection = document.createElement('div');
+            explanationSection.id = 'blockSummaryExplanation';
+            explanationSection.innerHTML = `
+                <p style="color: #6b7280; padding: 1rem; text-align: center;"><em>Shows seasonality for each location within each chunk of 12 consecutive 4-month blocks. "Block" = 1 if seasonal count > 0 for that location within that range, 0 otherwise.</em></p>
+            `;
+            table.parentNode.insertBefore(explanationSection, table.nextSibling);
+        }
+
+        function displayLocationSummaryTable(locationSummary) {
+            // Get the container for location summary
+            const container = document.getElementById('locationSummaryContainer');
+            
+            // Clear any existing content
+            container.innerHTML = '';
+            
+            // Create new location summary section
+            const locationSummarySection = document.createElement('div');
+            locationSummarySection.id = 'locationSummarySection';
+            locationSummarySection.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 2rem 0 1rem 0;">
+                    <h4 style="color: #93c5fd; margin: 0;">Location Seasonality Summary</h4>
+                    <button class="btn btn-primary" onclick="downloadLocationSummary()" style="padding: 8px 16px;">
+                        Download CSV
+                    </button>
+                </div>
+                <div class="data-preview">
+                    <table class="data-table" id="locationSummaryTable"></table>
+                </div>
+                <div id="locationSummaryExplanation">
+                    <p style="color: #6b7280; padding: 1rem; text-align: center;"><em>Shows overall seasonality per location. "Seasonality" = "Seasonal" if ALL year chunks have Block=1, "Not Seasonal" otherwise.</em></p>
+                </div>
+            `;
+            
+            // Add to container
+            container.appendChild(locationSummarySection);
+            
+            const table = document.getElementById('locationSummaryTable');
+
+            if (!locationSummary || locationSummary.length === 0) {
+                table.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #6b7280;">No location summary data available</td></tr>';
+                return;
+            }
+
+            // Check if we have secondary location data
+            const hasSecondaryLocation = locationSummary.some(row => row.SecondaryLocation && row.SecondaryLocation.trim() !== '');
+
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            let columns = ['Primary Location'];
+            if (hasSecondaryLocation) {
+                columns.push('Secondary Location');
+            }
+            columns = columns.concat(['Seasonal Blocks', 'Total Blocks', 'Seasonality']);
+            
+            columns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create body
+            const tbody = document.createElement('tbody');
+            
+            locationSummary.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                let rowData = [row.PrimaryLocation || ''];
+                if (hasSecondaryLocation) {
+                    rowData.push(row.SecondaryLocation || '');
+                }
+                rowData = rowData.concat([
+                    row.SeasonalBlocks,
+                    row.TotalBlocks,
+                    row.Seasonality
+                ]);
+                
+                rowData.forEach(value => {
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+            });
+            
+            table.appendChild(tbody);
         }
 
         function downloadDetailedResults() {
@@ -1494,6 +1474,22 @@
             
             URL.revokeObjectURL(url);
             showAlert('Block summary downloaded successfully!', 'success');
+        }
+
+        function downloadLocationSummary() {
+            if (!analysisResults || !analysisResults.locationSummary) return;
+
+            const csv = Papa.unparse(analysisResults.locationSummary);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `location_summary_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            showAlert('Location summary downloaded successfully!', 'success');
         }
 
         function backToConfig() {
